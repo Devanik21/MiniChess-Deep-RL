@@ -17,15 +17,15 @@ import ast
 # Page Config
 # ============================================================================
 st.set_page_config(
-    page_title="♟️ Minichess Arena",
+    page_title="Minichess Arena",
     layout="wide",
     initial_sidebar_state="expanded",
     page_icon="♟️"
 )
 
-st.title("🚀 Grandmaster-Level AlphaZero Minichess")
+st.title(" Grandmaster-Level AlphaZero Minichess")
 st.markdown("""
-**Ultra-Powered AI with Research-Grade Techniques** 🧠
+**Ultra-Powered AI with Research-Grade Techniques** 
 
 - 🎯 **Gumbel AlphaZero** - Sequential halving with Gumbel noise
 - 📚 **Opening Book** - Solved position knowledge  
@@ -1136,7 +1136,7 @@ with st.sidebar.expander("🎯 Training Parameters", expanded=True):
                                help="Start with 50 for Grandmaster level!")
     update_freq = st.number_input("Update Every N Games", 1, 50, 10, 1)
 
-with st.sidebar.expander("🧠 Agent 1 (White)", expanded=True):
+with st.sidebar.expander(" Agent 1 (White)", expanded=True):
     lr1 = st.slider("Learning Rate α₁", 0.1, 1.0, 0.5, 0.05)
     mcts_sims1 = st.slider("MCTS Sims₁", 5, 500, 5, 5)
     minimax_depth1 = st.slider("Minimax Depth₁", 1, 10, 1, 1)
@@ -1191,12 +1191,12 @@ with st.sidebar.expander("💾 Brain Storage", expanded=False):
                 st.session_state.agent1 = a1
                 st.session_state.agent2 = a2
                 st.session_state.training_history = cfg.get("training_history")
-                st.toast(f"✅ {count} memories loaded!", icon="🧠")
+                st.toast(f"✅ {count} memories loaded!", icon="")
                 import time
                 time.sleep(0.5)
                 st.rerun()
 
-train_btn = st.sidebar.button("🚀 Train", use_container_width=True, type="primary")
+train_btn = st.sidebar.button(" Train", use_container_width=True, type="primary")
 if st.sidebar.button("🧹 Reset", use_container_width=True):
     for key in list(st.session_state.keys()):
         del st.session_state[key]
@@ -1391,7 +1391,7 @@ if len(agent1.policy_table) > 20:
         
         # AI turn
         if h_env.current_player == st.session_state.ai_player and not h_env.game_over:
-            with st.spinner("🤖 AI thinking..."):
+            with st.spinner(" AI thinking..."):
                 import time
                 time.sleep(0.3)
                 ai_move = st.session_state.ai_agent.choose_action(h_env, training=False)
@@ -1404,7 +1404,7 @@ if len(agent1.policy_table) > 20:
             if h_env.winner == st.session_state.human_player:
                 st.success("🎉 YOU WIN!")
             elif h_env.winner == st.session_state.ai_player:
-                st.error("🤖 AI WINS!")
+                st.error(" AI WINS!")
             else:
                 st.warning("🤝 DRAW")
         else:
@@ -1455,5 +1455,5 @@ else:
     st.info("⏳ Train agents first to unlock human play mode!")
 
 st.markdown("---")
-st.caption("🚀 Grandmaster-Level Gumbel AlphaZero | 5x5 Minichess")
+st.caption(" Grandmaster-Level Gumbel AlphaZero | 5x5 Minichess")
 
