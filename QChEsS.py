@@ -1156,12 +1156,12 @@ with st.sidebar.expander("🎯 Training Parameters", expanded=True):
     update_freq = st.number_input("Update Every N Games", 1, 50, 10, 1)
 
 with st.sidebar.expander(" Agent 1 (White)", expanded=True):
-    lr1 = st.slider("Learning Rate α₁", 0.1, 1.0, 0.5, 0.05)
+    lr1 = st.slider("Learning Rate α₁", 0.1, 1.0, 0.3, 0.05)
     mcts_sims1 = st.slider("MCTS Sims₁", 5, 500, 5, 5)
     minimax_depth1 = st.slider("Minimax Depth₁", 1, 10, 1, 1)
 
 with st.sidebar.expander("⚫ Agent 2 (Black)", expanded=True):
-    lr2 = st.slider("Learning Rate α₂", 0.1, 1.0, 0.5, 0.05)
+    lr2 = st.slider("Learning Rate α₂", 0.1, 1.0, 0.3, 0.05)
     mcts_sims2 = st.slider("MCTS Sims₂", 5, 500, 5, 5)
     minimax_depth2 = st.slider("Minimax Depth₂", 1, 10, 1, 1)
 
