@@ -1352,44 +1352,90 @@ if 'training_history' in st.session_state and st.session_state.training_history:
             st.line_chart(df[['episode', 'agent1_policies', 'agent2_policies']].set_index('episode'))
 
 # Demo
+# ============================================================================
+# Demo (Replaced with Pausable Animation)
+# ============================================================================
 if 'agent1' in st.session_state and len(agent1.policy_table) > 20:
     st.markdown("---")
     st.subheader("⚔️ Grandmaster Battle")
+    st.info("Watch the AI masters fight! You can now Pause/Stop anytime.")
     
-    if st.button("🎬 Watch", use_container_width=True):
-        sim_env = Minichess()
-        board_ph = st.empty()
-        move_ph = st.empty()
+    # Initialize session state variables for the demo
+    if 'demo_active' not in st.session_state:
+        st.session_state.demo_active = False
+    
+    # Control Buttons
+    col_btn1, col_btn2 = st.columns(2)
+    
+    start_game = col_btn1.button("🎬 Start New Match", use_container_width=True)
+    stop_game = col_btn2.button("⏸️ Pause / Stop", use_container_width=True)
+    
+    # Button Logic
+    if start_game:
+        st.session_state.demo_active = True
+        st.session_state.demo_env = Minichess() # Create new board
+        st.session_state.demo_move_num = 0
+        st.rerun() # Refresh to start
         
-        agents = {1: agent1, 2: agent2}
-        move_num = 0
+    if stop_game:
+        st.session_state.demo_active = False
+        st.rerun() # Refresh to stop
         
-        while not sim_env.game_over and move_num < 100:
+    # Animation Loop
+    if st.session_state.demo_active and 'demo_env' in st.session_state:
+        sim_env = st.session_state.demo_env
+        
+        # Check if game continues
+        if not sim_env.game_over and st.session_state.demo_move_num < 100:
+            agents = {1: st.session_state.agent1, 2: st.session_state.agent2}
             current = sim_env.current_player
+            
+            # AI thinks and moves
             move = agents[current].choose_action(sim_env, training=False)
             
-            if move is None:
-                break
-            
-            sim_env.make_move(move)
-            move_num += 1
-            
-            player_name = "White" if current == 1 else "Black"
-            move_ph.caption(f"Move {move_num}: {player_name} → {move.to_notation()}")
-            
-            fig = visualize_board(sim_env.board, f"Move {move_num}", move)
-            board_ph.pyplot(fig)
-            plt.close(fig)
-            
-            import time
-            time.sleep(3)
-        
-        if sim_env.winner == 1:
-            st.success("🏆 White Wins!")
-        elif sim_env.winner == 2:
-            st.error("🏆 Black Wins!")
+            if move:
+                sim_env.make_move(move)
+                st.session_state.demo_move_num += 1
+                
+                # Visualize the move
+                player_name = "White" if current == 1 else "Black"
+                st.caption(f"Move {st.session_state.demo_move_num}: {player_name} → {move.to_notation()}")
+                
+                fig = visualize_board(sim_env.board, f"Move {st.session_state.demo_move_num}", move)
+                st.pyplot(fig)
+                plt.close(fig)
+                
+                # Wait a bit, then reload for the next frame
+                import time
+                time.sleep(1.0) # Adjust speed here (1.0 = 1 second per move)
+                st.rerun()
+            else:
+                st.session_state.demo_active = False
+                st.rerun()
         else:
-            st.warning("🤝 Draw")
+            st.session_state.demo_active = False
+            st.rerun()
+            
+    # Show Static Board (When Paused or Game Over)
+    if not st.session_state.demo_active and 'demo_env' in st.session_state:
+        sim_env = st.session_state.demo_env
+        
+        # Show the last known state
+        last_move = sim_env.move_history[-1] if sim_env.move_history else None
+        status = "Paused" if not sim_env.game_over else "Game Over"
+        
+        fig = visualize_board(sim_env.board, f"Match Status: {status}", last_move)
+        st.pyplot(fig)
+        plt.close(fig)
+        
+        # Show Winner
+        if sim_env.game_over:
+            if sim_env.winner == 1:
+                st.success("🏆 Agent 1 (White) Wins!")
+            elif sim_env.winner == 2:
+                st.error("🏆 Agent 2 (Black) Wins!")
+            else:
+                st.warning("🤝 Draw Match!")
 
 # Human vs AI
 st.markdown("---")
