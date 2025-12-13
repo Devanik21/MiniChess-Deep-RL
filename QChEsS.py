@@ -1146,6 +1146,9 @@ with st.sidebar.expander("⚫ Agent 2 (Black)", expanded=True):
     mcts_sims2 = st.slider("MCTS Sims₂", 50, 400, 180, 10)
     minimax_depth2 = st.slider("Minimax Depth₂", 2, 6, 4, 1)
 
+# This section continues from the sidebar configuration
+# Replace everything from the "Brain Storage" expander onwards
+
 with st.sidebar.expander("💾 Brain Storage", expanded=False):
     if 'agent1' in st.session_state and st.session_state.agent1:
         st.markdown("### 🔄 Neural Sync")
@@ -1155,6 +1158,11 @@ with st.sidebar.expander("💾 Brain Storage", expanded=False):
             st.session_state.agent2.policy_table = deepcopy(st.session_state.agent1.policy_table)
             st.session_state.agent2.epsilon = st.session_state.agent1.epsilon
             st.toast("Synced!", icon="⚪")
+        
+        if col2.button("B→W"):
+            st.session_state.agent1.policy_table = deepcopy(st.session_state.agent2.policy_table)
+            st.session_state.agent1.epsilon = st.session_state.agent2.epsilon
+            st.toast("Synced!", icon="⚫")
         
         st.markdown("---")
         
@@ -1444,15 +1452,8 @@ if len(agent1.policy_table) > 20:
                         st.session_state.selected = None
                         st.rerun()
 else:
-    st.info("Train first!")
-
+    st.info("⏳ Train agents first to unlock human play mode!")
 
 st.markdown("---")
-st.caption("🚀 Grandmaster-Level Gumbel AlphaZero | 5x5 Minichess")Synced!", icon="⚫")
-        
-        if col2.button("B→W"):
-            st.session_state.agent1.policy_table = deepcopy(st.session_state.agent2.policy_table)
-            st.session_state.agent1.epsilon = st.session_state.agent2.epsilon
-            st.toast("
-
+st.caption("🚀 Grandmaster-Level Gumbel AlphaZero | 5x5 Minichess")
 
