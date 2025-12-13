@@ -1447,3 +1447,12 @@ else:
     st.info("Train first!")
 
 
+st.markdown("---")
+st.caption("🚀 Grandmaster-Level Gumbel AlphaZero | 5x5 Minichess")Synced!", icon="⚫")
+        
+        if col2.button("B→W"):
+            st.session_state.agent1.policy_table = deepcopy(st.session_state.agent2.policy_table)
+            st.session_state.agent1.epsilon = st.session_state.agent2.epsilon
+            st.toast("
+
+
