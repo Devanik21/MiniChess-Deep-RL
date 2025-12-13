@@ -1452,4 +1452,297 @@ st.caption("🚀 Grandmaster-Level Gumbel AlphaZero | 5x5 Minichess")Synced!", i
         if col2.button("B→W"):
             st.session_state.agent1.policy_table = deepcopy(st.session_state.agent2.policy_table)
             st.session_state.agent1.epsilon = st.session_state.agent2.epsilon
-            st.toast("
+            st.toast("Synced!", icon="⚫")
+        
+        st.markdown("---")
+        
+        config = {
+            "lr1": lr1, "mcts_sims1": mcts_sims1, "minimax_depth1": minimax_depth1,
+            "lr2": lr2, "mcts_sims2": mcts_sims2, "minimax_depth2": minimax_depth2,
+            "training_history": st.session_state.get('training_history', None)
+        }
+        
+        zip_buffer = create_agents_zip(st.session_state.agent1, st.session_state.agent2, config)
+        st.download_button(
+            label="💾 Download Brain",
+            data=zip_buffer,
+            file_name="grandmaster_minichess.zip",
+            mime="application/zip",
+            use_container_width=True
+        )
+    
+    st.markdown("---")
+    
+    uploaded_file = st.file_uploader("📤 Upload Brain", type="zip")
+    if uploaded_file:
+        if st.button("🔄 Load", use_container_width=True):
+            a1, a2, cfg, count = load_agents_from_zip(uploaded_file)
+            if a1 and a2:
+                st.session_state.agent1 = a1
+                st.session_state.agent2 = a2
+                st.session_state.training_history = cfg.get("training_history")
+                st.toast(f"✅ {count} memories loaded!", icon="🧠")
+                import time
+                time.sleep(0.5)
+                st.rerun()
+
+train_btn = st.sidebar.button("🚀 Train", use_container_width=True, type="primary")
+if st.sidebar.button("🧹 Reset", use_container_width=True):
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
+
+# Initialize
+if 'env' not in st.session_state:
+    st.session_state.env = Minichess()
+
+if 'agent1' not in st.session_state:
+    st.session_state.agent1 = Agent(1, lr1)
+    st.session_state.agent1.mcts_simulations = mcts_sims1
+    st.session_state.agent1.minimax_depth = minimax_depth1
+    
+    st.session_state.agent2 = Agent(2, lr2)
+    st.session_state.agent2.mcts_simulations = mcts_sims2
+    st.session_state.agent2.minimax_depth = minimax_depth2
+
+agent1 = st.session_state.agent1
+agent2 = st.session_state.agent2
+env = st.session_state.env
+
+agent1.mcts_simulations = mcts_sims1
+agent1.minimax_depth = minimax_depth1
+agent2.mcts_simulations = mcts_sims2
+agent2.minimax_depth = minimax_depth2
+
+# Stats
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("⚪ White", f"{len(agent1.policy_table):,} policies")
+    st.caption(f"W: {agent1.wins} | ε: {agent1.epsilon:.3f}")
+    st.caption(f"MCTS: {agent1.mcts_simulations} | Depth: {agent1.minimax_depth}")
+
+with col2:
+    st.metric("⚫ Black", f"{len(agent2.policy_table):,} policies")
+    st.caption(f"W: {agent2.wins} | ε: {agent2.epsilon:.3f}")
+    st.caption(f"MCTS: {agent2.mcts_simulations} | Depth: {agent2.minimax_depth}")
+
+with col3:
+    total = agent1.wins + agent2.wins + agent1.draws
+    st.metric("Games", total)
+    st.caption(f"Draws: {agent1.draws}")
+    progress = min(100, (agent1.training_steps + agent2.training_steps) / 10)
+    st.progress(progress / 100, f"Skill: {progress:.0f}%")
+
+st.markdown("---")
+
+# Training
+if train_btn:
+    st.subheader("🎯 Self-Play Training")
+    status = st.empty()
+    progress_bar = st.progress(0)
+    
+    agent1.reset_stats()
+    agent2.reset_stats()
+    
+    history = {
+        'agent1_wins': [], 'agent2_wins': [], 'draws': [],
+        'agent1_epsilon': [], 'agent2_epsilon': [],
+        'agent1_policies': [], 'agent2_policies': [],
+        'episode': []
+    }
+    
+    for ep in range(1, episodes + 1):
+        winner = play_game(env, agent1, agent2, training=True)
+        agent1.decay_epsilon()
+        agent2.decay_epsilon()
+        
+        if ep % update_freq == 0:
+            history['agent1_wins'].append(agent1.wins)
+            history['agent2_wins'].append(agent2.wins)
+            history['draws'].append(agent1.draws)
+            history['agent1_epsilon'].append(agent1.epsilon)
+            history['agent2_epsilon'].append(agent2.epsilon)
+            history['agent1_policies'].append(len(agent1.policy_table))
+            history['agent2_policies'].append(len(agent2.policy_table))
+            history['episode'].append(ep)
+            
+            progress = ep / episodes
+            progress_bar.progress(progress)
+            
+            win_rate1 = agent1.wins / ep * 100 if ep > 0 else 0
+            win_rate2 = agent2.wins / ep * 100 if ep > 0 else 0
+            
+            status.markdown(f"""
+            **Episode {ep}/{episodes}** ({progress*100:.0f}%)
+            
+            | Metric | White ⚪ | Black ⚫ |
+            |--------|----------|----------|
+            | Wins | {agent1.wins} ({win_rate1:.1f}%) | {agent2.wins} ({win_rate2:.1f}%) |
+            | Policies | {len(agent1.policy_table):,} | {len(agent2.policy_table):,} |
+            | Epsilon | {agent1.epsilon:.4f} | {agent2.epsilon:.4f} |
+            | Steps | {agent1.training_steps:,} | {agent2.training_steps:,} |
+            
+            **Draws:** {agent1.draws} | **Skill Level:** {min(100, (agent1.training_steps + agent2.training_steps) / 10):.0f}%
+            """)
+    
+    progress_bar.progress(1.0)
+    st.toast("🏆 Grandmaster training complete!", icon="✨")
+    st.session_state.training_history = history
+    
+    import time
+    time.sleep(1)
+    st.rerun()
+
+# Charts
+if 'training_history' in st.session_state and st.session_state.training_history:
+    history = st.session_state.training_history
+    if isinstance(history, dict) and 'episode' in history and len(history['episode']) > 0:
+        st.subheader("📊 Training Analytics")
+        df = pd.DataFrame(history)
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            st.write("#### Performance")
+            if all(col in df.columns for col in ['episode', 'agent1_wins', 'agent2_wins', 'draws']):
+                st.line_chart(df[['episode', 'agent1_wins', 'agent2_wins', 'draws']].set_index('episode'))
+        
+        with c2:
+            st.write("#### Exploration (ε)")
+            if all(col in df.columns for col in ['episode', 'agent1_epsilon', 'agent2_epsilon']):
+                st.line_chart(df[['episode', 'agent1_epsilon', 'agent2_epsilon']].set_index('episode'))
+        
+        st.write("#### Knowledge Growth")
+        if all(col in df.columns for col in ['episode', 'agent1_policies', 'agent2_policies']):
+            st.line_chart(df[['episode', 'agent1_policies', 'agent2_policies']].set_index('episode'))
+
+# Demo
+if 'agent1' in st.session_state and len(agent1.policy_table) > 20:
+    st.markdown("---")
+    st.subheader("⚔️ Grandmaster Battle")
+    
+    if st.button("🎬 Watch", use_container_width=True):
+        sim_env = Minichess()
+        board_ph = st.empty()
+        move_ph = st.empty()
+        
+        agents = {1: agent1, 2: agent2}
+        move_num = 0
+        
+        while not sim_env.game_over and move_num < 100:
+            current = sim_env.current_player
+            move = agents[current].choose_action(sim_env, training=False)
+            
+            if move is None:
+                break
+            
+            sim_env.make_move(move)
+            move_num += 1
+            
+            player_name = "White" if current == 1 else "Black"
+            move_ph.caption(f"Move {move_num}: {player_name} → {move.to_notation()}")
+            
+            fig = visualize_board(sim_env.board, f"Move {move_num}", move)
+            board_ph.pyplot(fig)
+            plt.close(fig)
+            
+            import time
+            time.sleep(0.2)
+        
+        if sim_env.winner == 1:
+            st.success("🏆 White Wins!")
+        elif sim_env.winner == 2:
+            st.error("🏆 Black Wins!")
+        else:
+            st.warning("🤝 Draw")
+
+# Human vs AI
+st.markdown("---")
+st.header("🎮 Challenge Grandmaster AI")
+
+if len(agent1.policy_table) > 20:
+    c1, c2, c3 = st.columns([1,1,1])
+    with c1:
+        opp = st.selectbox("Opponent", ["Agent 1 (White)", "Agent 2 (Black)"])
+    with c2:
+        color = st.selectbox("Your Color", ["White", "Black"])
+    with c3:
+        st.write("")
+        if st.button("🎯 Start", use_container_width=True, type="primary"):
+            st.session_state.human_env = Minichess()
+            st.session_state.human_active = True
+            st.session_state.ai_agent = agent1 if "Agent 1" in opp else agent2
+            st.session_state.ai_player = 1 if color == "Black" else 2
+            st.session_state.human_player = 3 - st.session_state.ai_player
+            st.session_state.selected = None
+            st.rerun()
+    
+    if 'human_env' in st.session_state and st.session_state.human_active:
+        h_env = st.session_state.human_env
+        
+        # AI turn
+        if h_env.current_player == st.session_state.ai_player and not h_env.game_over:
+            with st.spinner("🤖 AI thinking..."):
+                import time
+                time.sleep(0.3)
+                ai_move = st.session_state.ai_agent.choose_action(h_env, training=False)
+                if ai_move:
+                    h_env.make_move(ai_move)
+                    st.rerun()
+        
+        # Status
+        if h_env.game_over:
+            if h_env.winner == st.session_state.human_player:
+                st.success("🎉 YOU WIN!")
+            elif h_env.winner == st.session_state.ai_player:
+                st.error("🤖 AI WINS!")
+            else:
+                st.warning("🤝 DRAW")
+        else:
+            turn = "Your Turn" if h_env.current_player == st.session_state.human_player else "AI Turn"
+            color_name = "White" if h_env.current_player == 1 else "Black"
+            st.caption(f"**{turn}** ({color_name})")
+        
+        # Board
+        last = h_env.move_history[-1] if h_env.move_history else None
+        fig = visualize_board(h_env.board, "Human vs AI", last)
+        st.pyplot(fig)
+        plt.close(fig)
+        
+        # Moves
+        if not h_env.game_over and h_env.current_player == st.session_state.human_player:
+            st.write("**Select piece:**")
+            moves = h_env.get_all_valid_moves()
+            starts = list(set([m.start for m in moves]))
+            
+            piece_sym = {
+                'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
+                'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'
+            }
+            
+            cols = st.columns(min(len(starts), 5))
+            for idx, pos in enumerate(starts):
+                piece = h_env.board[pos[0], pos[1]]
+                sym = piece_sym.get(piece, piece)
+                coord = f"{'abcde'[pos[1]]}{5-pos[0]}"
+                if cols[idx % len(cols)].button(f"{sym} {coord}", key=f"s{pos}"):
+                    st.session_state.selected = pos
+                    st.rerun()
+            
+            if 'selected' in st.session_state and st.session_state.selected:
+                piece_moves = [m for m in moves if m.start == st.session_state.selected]
+                st.write("**Moves:**")
+                
+                mcols = st.columns(min(len(piece_moves), 5))
+                for idx, move in enumerate(piece_moves):
+                    label = move.to_notation()
+                    if move.captured:
+                        label += "×"
+                    if mcols[idx % len(mcols)].button(label, key=f"m{idx}"):
+                        h_env.make_move(move)
+                        st.session_state.selected = None
+                        st.rerun()
+else:
+    st.info("⏳ Train agents first to unlock human play mode!")
+
+st.markdown("---")
+st.caption("🚀 Grandmaster-Level Gumbel AlphaZero | 5x5 Minichess")
