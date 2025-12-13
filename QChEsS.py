@@ -1215,7 +1215,7 @@ with st.sidebar.expander("💾 Brain Storage", expanded=False):
                 st.session_state.agent1 = a1
                 st.session_state.agent2 = a2
                 st.session_state.training_history = cfg.get("training_history")
-                st.toast(f"✅ {count} memories loaded!", icon="")
+                st.toast(f"✅ {count} memories loaded!")
                 import time
                 time.sleep(0.5)
                 st.rerun()
