@@ -161,7 +161,9 @@ class Minichess:
         return self.get_state()
     
     def get_state(self):
-        return tuple(tuple(row) for row in self.board)
+        """Return hashable board state with native Python types for safe JSON"""
+        # Fix: Convert numpy characters to Python strings
+        return tuple(tuple(str(c) for c in row) for row in self.board)
     
     def copy(self):
         new_game = Minichess()
@@ -1021,6 +1023,10 @@ def visualize_board(board, title="Minichess Board", last_move=None):
 # Serialization
 # ============================================================================
 
+# ============================================================================
+# Serialization (Fixed for Grandmaster)
+# ============================================================================
+
 def serialize_move(move):
     return {
         "s": [int(x) for x in move.start],
@@ -1042,21 +1048,24 @@ def deserialize_move(data):
 def create_agents_zip(agent1, agent2, config):
     def serialize_agent(agent, role_name):
         clean_policy = {}
+        # Copy to avoid runtime mutation errors
         current_policies = agent.policy_table.copy()
         
         for state, moves in current_policies.items():
             try:
+                # Ensure state is a string representation of the tuple
                 state_str = str(state)
                 clean_policy[state_str] = {}
                 
                 for move, value in moves.items():
+                    # Serialize the move object to a JSON string key
                     move_json_str = json.dumps(serialize_move(move))
                     clean_policy[state_str][move_json_str] = float(value)
             except Exception:
                 continue
         
         return {
-            "metadata": {"role": role_name, "version": "3.0_GRANDMASTER"},
+            "metadata": {"role": role_name, "version": "3.1_GRANDMASTER_FIXED"},
             "policy_table": clean_policy,
             "epsilon": float(agent.epsilon),
             "wins": int(agent.wins),
@@ -1083,7 +1092,7 @@ def load_agents_from_zip(uploaded_file):
         with zipfile.ZipFile(uploaded_file, "r") as zf:
             files = zf.namelist()
             if not all(f in files for f in ["agent1.json", "agent2.json", "config.json"]):
-                st.error("❌ Corrupt File")
+                st.error("❌ Corrupt File: Missing agent data.")
                 return None, None, None, 0
             
             a1_data = json.loads(zf.read("agent1.json").decode('utf-8'))
@@ -1098,32 +1107,42 @@ def load_agents_from_zip(uploaded_file):
                 agent.mcts_simulations = data.get('mcts_sims', 50)
                 agent.training_steps = data.get('training_steps', 0)
                 
+                # Reset and reload policy table
                 agent.policy_table = defaultdict(lambda: defaultdict(float))
-                loaded_policies = 0
+                loaded_policies_count = 0
+                
                 policy_data = data.get('policy_table', {})
                 
                 for state_str, moves_dict in policy_data.items():
                     try:
+                        # Convert string "((...))" back to tuple
                         state = ast.literal_eval(state_str)
+                        
                         for move_json_str, value in moves_dict.items():
+                            # Convert JSON string key back to dict, then to Move object
                             move_dict = json.loads(move_json_str)
                             move = deserialize_move(move_dict)
                             agent.policy_table[state][move] = value
-                        loaded_policies += 1
+                        
+                        loaded_policies_count += 1
                     except Exception:
                         continue
-                return loaded_policies
+                return loaded_policies_count
             
+            # Recreate Agent 1
             agent1 = Agent(1, config.get('lr1', 0.5), config.get('gamma1', 0.99))
             count1 = restore_agent(agent1, a1_data)
             
+            # Recreate Agent 2
             agent2 = Agent(2, config.get('lr2', 0.5), config.get('gamma2', 0.99))
             count2 = restore_agent(agent2, a2_data)
             
             return agent1, agent2, config, count1 + count2
+            
     except Exception as e:
-        st.error(f"❌ Error: {str(e)}")
+        st.error(f"❌ Error loading brain: {str(e)}")
         return None, None, None, 0
+
 
 # ============================================================================
 # Streamlit UI
@@ -1186,15 +1205,22 @@ with st.sidebar.expander("💾 Brain Storage", expanded=False):
     uploaded_file = st.file_uploader("📤 Upload Brain", type="zip")
     if uploaded_file:
         if st.button("🔄 Load", use_container_width=True):
-            a1, a2, cfg, count = load_agents_from_zip(uploaded_file)
-            if a1 and a2:
-                st.session_state.agent1 = a1
-                st.session_state.agent2 = a2
-                st.session_state.training_history = cfg.get("training_history")
-                st.toast(f"✅ {count} memories loaded!", icon="")
-                import time
-                time.sleep(0.5)
-                st.rerun()
+            with st.spinner("Restoring Grandmaster neural pathways..."):
+                a1, a2, cfg, count = load_agents_from_zip(uploaded_file)
+                if a1 and a2:
+                    st.session_state.agent1 = a1
+                    st.session_state.agent2 = a2
+                    st.session_state.training_history = cfg.get("training_history")
+                    
+                    # Reset environment to ensure clean state
+                    st.session_state.env = Minichess()
+                    
+                    st.toast(f"✅ {count} Grandmaster memories loaded!", icon="🧠")
+                    st.success(f"Successfully loaded {count} policies. The Grandmaster is ready.")
+                    
+                    import time
+                    time.sleep(1.0)
+                    st.rerun()
 
 train_btn = st.sidebar.button(" Train", use_container_width=True, type="primary")
 if st.sidebar.button("🧹 Reset", use_container_width=True):
