@@ -1151,7 +1151,7 @@ def load_agents_from_zip(uploaded_file):
 st.sidebar.header("⚙️ Grandmaster Configuration")
 
 with st.sidebar.expander("🎯 Training Parameters", expanded=True):
-    episodes = st.number_input("Training Episodes", 10, 1000, 50, 5, 
+    episodes = st.number_input("Training Episodes", 1, 1000, 50, 5, 
                                help="Start with 50 for Grandmaster level!")
     update_freq = st.number_input("Update Every N Games", 1, 50, 10, 1)
 
