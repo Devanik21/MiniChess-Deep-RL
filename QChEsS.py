@@ -1526,5 +1526,9 @@ if len(agent1.policy_table) > 20:
 else:
     st.info("⏳ Train agents first to unlock human play mode!")
 
-st.markdown("---")
-st.caption(" Grandmaster-Level Gumbel AlphaZero | 5x5 Minichess")
+st.markdown("---") # Keep the separator line
+
+# This line uses markdown syntax to make the entire footer text a hyperlink
+st.markdown("""
+    [♟️ **Grandmaster-Level Gumbel AlphaZero | 5x5 Minichess** (Training Notebook)](https://www.kaggle.com/code/devanik/grandmaster-level-alphazero-minichess/edit)
+""")
